@@ -1,12 +1,18 @@
 from flask import Flask, render_template, url_for, request
 import re
+import json
 import pandas as pd
 import spacy
 from spacy import displacy
 import en_core_web_sm
 from flask import Markup
 
-nlp = spacy.load('en_core_web_sm')
+#next are for keyword
+from collections import Counter
+from string import punctuation
+
+nlp_en = spacy.load('en_core_web_sm')
+nlp_fr = spacy.load('fr_core_news_sm')
 
 app = Flask(__name__)
 
@@ -17,39 +23,64 @@ def index():
 #this is the web interface to demonstrate the NER extraction
 @app.route('/process',methods=["POST"])
 def process():
-	if request.method == 'POST':
-		rawtext = request.form['rawtext']
-		doc = nlp(rawtext)
-		mkd_text = displacy.render(doc,style='ent')
-		mkd_text_coded = Markup(mkd_text)
-
-	return render_template("index.html", mkd_text=mkd_text_coded)
-
-#this needs to be deleted, it has no function 
-@app.route('/ner')
-def api_articles():
-    return 'List of ' + url_for('api_articles')
-
-#this the API call
-#I need to modify it in order to extract ALL or a subset of NER
-@app.route('/ner/<rawtext>')
-def getNER(rawtext):
-    doc = nlp(rawtext)
-    d = []
-    num_of_results_GPE = 0
-    for ent in doc.ents:
-        d.append((ent.label_, ent.text))
-        df = pd.DataFrame(d, columns=('named entity', 'output'))
-        GPE_named_entity = df.loc[df['named entity'] == 'GPE']['output']
-        
-        #to get number of NER
-        results_GPE = GPE_named_entity
-        num_of_results_GPE = len(results_GPE)
+    mkd_text_coded=''
     
-    if num_of_results_GPE > 0:
-        return GPE_named_entity.to_json(orient='split')
+    if request.method == 'POST':
+        text = request.form['rawtext']
+        lang = request.form['language']
+        action = request.form['action']
+
+        if lang == "english":
+            doc = nlp_en(text)
+        elif lang == "french":
+            doc = nlp_fr(text)
+
+        if action == "ner":
+            mkd_text = displacy.render(doc,style='ent')
+            mkd_text_coded = Markup(mkd_text)
+        elif action == "keyword":
+            #keywords = set(extract_keywords(text))#no duplicates
+            keywords_all = extract_keywords(text)
+            keywords = Counter(keywords_all).most_common(5)
+            mkd_text_coded = Markup(keywords)
+
+    return render_template("index.html", mkd_text=mkd_text_coded)
+
+def extract_keywords(text):
+    result = []
+    pos_tag = ['PROPN', 'ADJ', 'NOUN']
+    doc = nlp_en(text.lower())
+    for token in doc:
+        if(token.text in nlp_en.Defaults.stop_words or token.text in punctuation):
+            continue
+        if(token.pos_ in pos_tag):
+            result.append(token.text)
+    return result
+    
+#this the API call
+@app.route('/api/v1.0/ner', methods=['GET'])
+def getNER():
+    lang = request.args.get('lang')
+    text = request.args.get('text')
+
+    my_dict = {}
+    
+    if lang == "en":
+        doc = nlp_en(text)
+    elif lang == "fr":
+        doc = nlp_fr(text)
     else:
-        return "undef"#need to return a useful answer
+        my_dict['status'] = "language not supported"
+        return json.dumps(my_dict)
+
+    d = []
+    counter = 0
+    for ent in doc.ents:
+        my_dict[counter] = [ent.label_, ent.text]
+        counter += 1
+    
+    my_dict['status'] = len(my_dict)
+    return json.dumps(my_dict)
 
 if __name__ == '__main__':
     app.run(debug=True)
