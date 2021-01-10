@@ -6,6 +6,8 @@ import spacy
 from spacy import displacy
 import en_core_web_sm
 from flask import Markup
+from langdetect import detect
+
 
 #next are for keyword
 from collections import Counter
@@ -27,13 +29,17 @@ def process():
     
     if request.method == 'POST':
         text = request.form['rawtext']
-        lang = request.form['language']
+        #lang = request.form['language']
+        lang = detect(text) # detect language automatically
         action = request.form['action']
-
-        if lang == "english":
+        
+        if lang == "en":
             doc = nlp_en(text)
-        elif lang == "french":
+        elif lang == "fr":
             doc = nlp_fr(text)
+        else:
+            mkd_text_coded='Language not supported'
+            return render_template("index.html", mkd_text=mkd_text_coded)
 
         if action == "ner":
             mkd_text = displacy.render(doc,style='ent')
@@ -52,13 +58,6 @@ def process():
 #this extracts the terminological units (special terms)
 def extract_terminology(text):
     result = []
-    pos_tag = ['PROPN', 'ADJ', 'NOUN']
-    doc = nlp_en(text.lower())
-    for token in doc:
-        if(token.text in nlp_en.Defaults.stop_words or token.text in punctuation):
-            continue
-        if(token.pos_ in pos_tag):
-            result.append(token.text)
     return result
 
 #this extracts the keywords using the pretrained model
