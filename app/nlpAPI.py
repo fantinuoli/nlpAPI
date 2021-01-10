@@ -39,13 +39,23 @@ def process():
             mkd_text = displacy.render(doc,style='ent')
             mkd_text_coded = Markup(mkd_text)
         elif action == "keyword":
-            #keywords = set(extract_keywords(text))#no duplicates
             keywords_all = extract_keywords(text)
             keywords = Counter(keywords_all).most_common(5)
             mkd_text_coded = Markup(keywords)
+        elif action == "term":
+            terminology_all = extract_terminology(text)
+            terminology = Counter(terminology_all).most_common(5)
+            mkd_text_coded = Markup(terminology)
 
     return render_template("index.html", mkd_text=mkd_text_coded)
 
+#this extracts the terminological units (special terms)
+def extract_keywords(text):
+    result = []
+
+    return result
+
+#this extracts the keywords using the pretrained model
 def extract_keywords(text):
     result = []
     pos_tag = ['PROPN', 'ADJ', 'NOUN']
@@ -57,7 +67,7 @@ def extract_keywords(text):
             result.append(token.text)
     return result
     
-#this the API call
+#this the API call without UI
 @app.route('/api/v1.0/ner', methods=['GET'])
 def getNER():
     lang = request.args.get('lang')
