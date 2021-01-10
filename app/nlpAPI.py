@@ -50,7 +50,7 @@ def process():
     return render_template("index.html", mkd_text=mkd_text_coded)
 
 #this extracts the terminological units (special terms)
-def extract_keywords(text):
+def extract_terminology(text):
     result = []
 
     return result
