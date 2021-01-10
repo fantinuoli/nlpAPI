@@ -52,7 +52,13 @@ def process():
 #this extracts the terminological units (special terms)
 def extract_terminology(text):
     result = []
-
+    pos_tag = ['PROPN', 'ADJ', 'NOUN']
+    doc = nlp_en(text.lower())
+    for token in doc:
+        if(token.text in nlp_en.Defaults.stop_words or token.text in punctuation):
+            continue
+        if(token.pos_ in pos_tag):
+            result.append(token.text)
     return result
 
 #this extracts the keywords using the pretrained model
